@@ -79,6 +79,27 @@ Add to your `~/.kimi-code/mcp.json`:
 }
 ```
 
+### 6. (Optional) Auto-invoke on every conversation with `AGENTS.md`
+
+If you want Kimi Code to **automatically** recall memories at the start of every conversation and capture them after each turn, create an `AGENTS.md` file in your project root. `AGENTS.md` is a project-scope instruction file that Kimi Code loads automatically; it is **not** a skill and does not require a trigger word.
+
+Example `AGENTS.md`:
+
+```markdown
+# TencentDB Agent Memory Rules
+
+- **Fixed session_key:** always use `kimi-default` (or any stable identifier).
+- **On the first user message of every conversation:**
+  - Call `mcp__tencentdb-memory__tencentdb_memory_recall` with `session_key="kimi-default"`.
+  - Do not answer the user until this recall has been attempted.
+- **After every meaningful user/assistant turn:**
+  - Call `mcp__tencentdb-memory__tencentdb_memory_capture` with `user_content`, `assistant_content`, and `session_key="kimi-default"`.
+- **When the session ends:**
+  - Call `mcp__tencentdb-memory__tencentdb_session_end` with `session_key="kimi-default"`.
+```
+
+This is useful for keeping a single, persistent memory context across all your chats in a workspace.
+
 ## MCP Tools
 
 | Tool | Description |
