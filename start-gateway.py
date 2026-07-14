@@ -58,18 +58,26 @@ def main() -> int:
     env["SILICONFLOW_BASE_URL"] = os.getenv("SILICONFLOW_BASE_URL", "https://api.siliconflow.cn/v1")
     env["SILICONFLOW_EMBEDDING_MODEL"] = os.getenv("SILICONFLOW_EMBEDDING_MODEL", "BAAI/bge-m3")
 
-    # Use the tsx installed inside the plugin checkout for reliability
-    tsx_bin = INSTALL_DIR / "node_modules" / ".bin" / "tsx"
-    if sys.platform == "win32":
-        tsx_bin = INSTALL_DIR / "node_modules" / ".bin" / "tsx.cmd"
-    if not tsx_bin.exists():
-        print(f"tsx not found at {tsx_bin}. Run setup-gateway.py first.")
+    # Single-process launch (matches start-gateway-background.py v2): run
+    # server.ts via `node --import tsx-loader` directly, skipping tsx's CLI
+    # wrapper. One process instead of two, consistent with the background script.
+    node_bin = shutil.which("node") or shutil.which("node.exe")
+    if sys.platform == "win32" and not node_bin:
+        node_bin = str(INSTALL_DIR / "node_modules" / ".bin" / "node.exe")
+    if not node_bin:
+        print("node not found in PATH. Run setup-gateway.py first.")
         return 1
 
-    cmd = [
-        str(tsx_bin),
-        str(GATEWAY_SCRIPT),
-    ]
+    tsx_loader = INSTALL_DIR / "node_modules" / "tsx" / "dist" / "loader.mjs"
+    tsx_preflight = INSTALL_DIR / "node_modules" / "tsx" / "dist" / "preflight.cjs"
+    if not tsx_loader.exists():
+        print(f"tsx loader not found at {tsx_loader}. Run setup-gateway.py first.")
+        return 1
+
+    cmd = [str(node_bin)]
+    if tsx_preflight.exists():
+        cmd += ["--require", str(tsx_preflight)]
+    cmd += ["--import", tsx_loader.as_uri(), str(GATEWAY_SCRIPT)]
 
     print(f"Starting TencentDB Agent Memory Gateway...")
     print(f"  Base URL: {REQUIRED['TENCENTDB_LLM_BASE_URL']}")
